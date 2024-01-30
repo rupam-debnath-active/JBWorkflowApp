@@ -1,0 +1,38 @@
+[
+  {
+    "node_name": "GetUserName",
+    "node_type": "PromptOther",
+    "node_description": "Get the user's name",
+    "next_node": "GetUserPhone",
+    "text": "Please enter your name:",
+    "failure_text": "Sorry, I didn't understand. Please enter your name:",
+    "variable_name": "user_name"
+  },
+  {
+    "node_name": "GetUserPhone",
+    "node_type": "PromptPhone",
+    "node_description": "Get the user's phone number",
+    "next_node": "GetBookingTime",
+    "text": "Please enter your phone number",
+    "failure_text": "Please enter a valid phone number",
+    "variable_name": "user_phone_number"
+  },
+  {
+    "node_name": "GetBookingTime",
+    "node_type": "PromptOther",
+    "node_description": "Get the time at which user wishes to book the table",
+    "next_node": "DisplayDetails",
+    "text": "At what time would you like to book the table?",
+    "failure_text": "Please enter a valid time.",
+    "variable_name": "booking_time"
+  },
+  {
+    "node_name": "DisplayDetails",
+    "node_type": "Text",
+    "node_description": "Display all the details the users submitted and take their confirmation",
+    "next_node": "",
+    "text": "Please review the details you submitted:\n\nName: {{user_name}}\nPhone Number: {{user_phone_number}}\nBooking Time: {{booking_time}}\n\nPlease confirm if all the details are correct.",
+    "failure_text": null,
+    "variable_name": null
+  }
+]

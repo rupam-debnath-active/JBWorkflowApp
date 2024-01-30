@@ -1,0 +1,76 @@
+{
+  "journey": [
+    {
+      "node_name": "ListUserCards",
+      "node_type": "DisplayList",
+      "node_description": "List of user's credit cards: XYZ, ABC or 123 card",
+      "next_node": "AskBlockType",
+      "false_node": "",
+      "header": "List of user's credit cards:",
+      "list": [
+        {
+          "item_title": "XYZ card",
+          "item_subtitle": "",
+          "item_value": "XYZ"
+        },
+        {
+          "item_title": "ABC card",
+          "item_subtitle": "",
+          "item_value": "ABC"
+        },
+        {
+          "item_title": "123 card",
+          "item_subtitle": "",
+          "item_value": "123"
+        }
+      ],
+      "variable_name": "selected_card"
+    },
+    {
+      "node_name": "AskBlockType",
+      "node_type": "PromptOptions",
+      "node_description": "Do you wish to block the card permanently or temporarily?",
+      "next_node": "DisplayUserChoices",
+      "false_node": "",
+      "text": "Do you wish to block the card permanently or temporarily?",
+      "option_1_text": "Permanently",
+      "option_2_text": "Temporarily",
+      "variable_name": "block_type"
+    },
+    {
+      "node_name": "DisplayUserChoices",
+      "node_type": "Text",
+      "node_description": "Display user's choices",
+      "next_node": "ConfirmProceed",
+      "false_node": "",
+      "text": "Your choices are:\n\n1. Block {{selected_card}} permanently\n2. Block {{selected_card}} temporarily\n\nPlease select an option."
+    },
+    {
+      "node_name": "ConfirmProceed",
+      "node_type": "PromptOptions",
+      "node_description": "Do you wish to proceed with these choices?",
+      "next_node": "ThankYouMessage",
+      "false_node": "CancelMessage",
+      "text": "Do you wish to proceed with these choices?",
+      "option_1_text": "Yes",
+      "option_2_text": "No",
+      "variable_name": "proceed"
+    },
+    {
+      "node_name": "ThankYouMessage",
+      "node_type": "Text",
+      "node_description": "Thank you for your request",
+      "next_node": "",
+      "false_node": "",
+      "text": "Thank you for your request. Your {{selected_card}} card has been {{block_type}}. Have a great day!"
+    },
+    {
+      "node_name": "CancelMessage",
+      "node_type": "Text",
+      "node_description": "Your request has been cancelled",
+      "next_node": "",
+      "false_node": "",
+      "text": "Your request to block {{selected_card}} has been cancelled. Thank you!"
+    }
+  ]
+}
