@@ -5,6 +5,7 @@ ai/active/morfeus/model/StartPayload.class
 ai/active/morfeus/model/WorkflowResponse.class
 ai/active/morfeus/model/AiRequest.class
 ai/active/morfeus/model/EventTab.class
+ai/active/morfeus/service/AiService.class
 ai/active/morfeus/controller/WorkflowController.class
 ai/active/morfeus/SampleWorkflowApplication.class
 ai/active/morfeus/model/Variables.class
@@ -14,6 +15,7 @@ ai/active/morfeus/model/Journeys.class
 ai/active/morfeus/utils/WorkflowUtils.class
 ai/active/morfeus/utils/ApplicationLogger.class
 ai/active/morfeus/model/VarLocal.class
+ai/active/morfeus/service/AiService$1.class
 ai/active/morfeus/model/Node.class
 ai/active/morfeus/model/ListObject.class
 ai/active/morfeus/model/PaginationConfig.class
@@ -22,7 +24,6 @@ ai/active/morfeus/model/Content.class
 ai/active/morfeus/model/Canvas.class
 ai/active/morfeus/model/Nodes.class
 ai/active/morfeus/config/WorkflowAppConfig.class
-ai/active/morfeus/service/WorkflowService$1.class
 ai/active/morfeus/service/WorkflowService.class
 ai/active/morfeus/model/Settings.class
 ai/active/morfeus/model/AiResponse.class

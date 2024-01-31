@@ -27,52 +27,24 @@ public class WorkflowService {
   @Autowired
   private ResourceLoader resourceLoader;
 
-  private static final String CLASSPATH = "classpath:";
+  @Autowired
+  private AiService aiService;
 
-  private static final String AI_URL_1 = "https://sniper.active.ai/hackathon/generate_flow/";
-  private static final String AI_URL_2 = "https://autobot.active.ai/hackathon/generate_flow_v3/";
+  private static final String CLASSPATH = "classpath:";
 
   public WorkflowService(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 
-  @Cacheable(value = "prompt", key = "'autobot:prompt:' + #aiRequest.description")
   public WorkflowResponse getWorkflowResponse(AiRequest aiRequest, String urlId) {
-    ApplicationLogger.logInfo("<<<<<<<<<<<<<<<<<<<<<<<<Entered API call>>>>>>>>>>>>>>>>>>>>>>>>>>>>", this.getClass());
-    RestTemplate restTemplate = new RestTemplate();
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-    String URL = AI_URL_1;
-    if (null != urlId && urlId.equalsIgnoreCase("2")) {
-      URL = AI_URL_2;
+    List<WorkflowRequest> request = aiService.getAIResponse(aiRequest, urlId);
+    WorkflowResponse workflowResponse = getWorkflowJson(request);
+    for (WorkflowRequest workflowRequest : request) {
+      workflowResponse.getAi().add(workflowRequest.getNode_name());
     }
-    try {
-      HttpEntity<String> requestHttpEntity = new HttpEntity<>(objectMapper.writeValueAsString(aiRequest), headers);
-      ResponseEntity<String> aiResponse =
-          restTemplate.postForEntity(URL, requestHttpEntity, String.class);
-      if (aiResponse.getStatusCode().equals(HttpStatus.OK) && aiResponse.getBody() != null) {
-        List<WorkflowRequest> request;
-        WorkflowResponse workflowResponse;
-        if (URL.equalsIgnoreCase(AI_URL_1)) {
-          request = objectMapper.readValue(aiResponse.getBody(), new TypeReference<List<WorkflowRequest>>() {
-          });
-        } else {
-          request = objectMapper.readValue(aiResponse.getBody(), AiResponse.class).getJourney();
-        }
-        workflowResponse = getWorkflowJson(request);
-        for (WorkflowRequest workflowRequest : request) {
-          workflowResponse.getAi().add(workflowRequest.getNode_name());
-        }
-        ApplicationLogger.logInfo("Response : " + workflowResponse, this.getClass());
-        ApplicationLogger.logInfo("<<<<<<<<<<<<<<<<<<<<<<<<Exited API call>>>>>>>>>>>>>>>>>>>>>>>>>>>>", this.getClass());
-        return workflowResponse;
-      }
-    } catch (Exception e) {
-      ApplicationLogger.logError("Error while workflow response : ", e);
-      return null;
-    }
-    return null;
+    ApplicationLogger.logInfo("Response : " + workflowResponse, this.getClass());
+    return workflowResponse;
+
   }
 
   private WorkflowResponse getWorkflowJson(List<WorkflowRequest> workflowRequests) {
@@ -82,12 +54,12 @@ public class WorkflowService {
     Content content = new Content();
     Journeys journeys1 = new Journeys();
     Main main = new Main();
-    Nodes nodes = new Nodes();
     Map<String, Node> nodeHashMap = new LinkedHashMap<>();
     int xpos = 100;
     int ypos = 131;
     List<VarLocal> varLocals = new ArrayList<>();
     for (int i=0; i<workflowRequests.size(); i++) {
+      WorkflowRequest request = workflowRequests.get(i);
       if (i==0) {
         Node node = new Node();
         node.setType("start");
@@ -102,29 +74,29 @@ public class WorkflowService {
         eventTab.setID(new Object[0]);
         map.put("eventTabs", eventTab);
         node.setPayload(map);
-        node.setNext(Collections.singletonList(workflowRequests.get(i).getNode_name()));
+        node.setNext(Collections.singletonList(request.getNode_name()));
         nodeHashMap.put("start",node);
       }
-      if (i == workflowRequests.size()-1 || "".equalsIgnoreCase(workflowRequests.get(i).getNext_node())) {
+      if (i == workflowRequests.size()-1 || "".equalsIgnoreCase(request.getNext_node())) {
         Node node = new Node();
         Canvas canvas = new Canvas();
         xpos = xpos + 500;
         canvas.setXPos(xpos);
         canvas.setYPos(ypos);
         node.setCanvas(canvas);
-        if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptPhone")) {
-          setPhonePrompt(node, workflowRequests.get(i), varLocals);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptEmail")) {
-          setEmailPrompt(node, workflowRequests.get(i), varLocals);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("DisplayList")) {
-          setListPrompt(node, workflowRequests.get(i), varLocals);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptOptions")) {
-          setPromptOptions(node, workflowRequests.get(i), varLocals);
+        if (request.getNode_type().equalsIgnoreCase("PromptPhone")) {
+          setPhonePrompt(node, request, varLocals);
+        } else if (request.getNode_type().equalsIgnoreCase("PromptEmail")) {
+          setEmailPrompt(node, request, varLocals);
+        } else if (request.getNode_type().equalsIgnoreCase("DisplayList")) {
+          setListPrompt(node, request, varLocals);
+        } else if (request.getNode_type().equalsIgnoreCase("PromptOptions")) {
+          setPromptOptions(node, request, varLocals);
         } else {
-          setTextPrompt(node, workflowRequests.get(i), varLocals);
+          setTextPrompt(node, request, varLocals);
         }
         node.setNext(new ArrayList<>());
-        nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
+        nodeHashMap.put(request.getNode_name(),node);
       } else {
         Node node = new Node();
         Canvas canvas = new Canvas();
@@ -132,63 +104,16 @@ public class WorkflowService {
         canvas.setXPos(xpos);
         canvas.setYPos(ypos);
         node.setCanvas(canvas);
-        if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptPhone")) {
-          setPhonePrompt(node, workflowRequests.get(i), varLocals);
-          node.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(workflowRequests.get(i).getNext_node()));
-          nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptEmail")) {
-          setEmailPrompt(node, workflowRequests.get(i), varLocals);
-          node.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(workflowRequests.get(i).getNext_node()));
-          nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("DisplayList")) {
-          setListPrompt(node, workflowRequests.get(i), varLocals);
-          node.setNext(Collections.singletonList("codeNodeList"+i));
-          nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
-
-          Node node3 = new Node();
-          Canvas canvas3 = new Canvas();
-          xpos = xpos + 500;
-          canvas3.setXPos(xpos);
-          canvas3.setYPos(ypos);
-          node3.setCanvas(canvas3);
-          setCodeNodePrompt(node3, workflowRequests.get(i), varLocals);
-          node3.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(workflowRequests.get(i).getNext_node()));
-          nodeHashMap.put("codeNodeList"+i,node3);
-        } else if (workflowRequests.get(i).getNode_type().equalsIgnoreCase("PromptOptions")) {
-          setPromptOptions(node, workflowRequests.get(i), varLocals);
-          List<String> next = new ArrayList<>();
-          if (!"".equalsIgnoreCase(workflowRequests.get(i).getNext_node())) {
-            next.add(workflowRequests.get(i).getNext_node());
-          }
-          if (!"".equalsIgnoreCase(workflowRequests.get(i).getFalse_node())) {
-            next.add(workflowRequests.get(i).getFalse_node());
-          }
-          node.setNext(next);
-          nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
+        if (request.getNode_type().equalsIgnoreCase("PromptPhone")) {
+          processPhonePrompt(workflowRequests, nodeHashMap, varLocals, i, node);
+        } else if (request.getNode_type().equalsIgnoreCase("PromptEmail")) {
+          processEmailPrompt(workflowRequests, nodeHashMap, varLocals, i, node);
+        } else if (request.getNode_type().equalsIgnoreCase("DisplayList")) {
+          xpos = processDisplayList(workflowRequests, nodeHashMap, xpos, ypos, varLocals, i, node);
+        } else if (request.getNode_type().equalsIgnoreCase("PromptOptions")) {
+          processPromptOptions(workflowRequests, nodeHashMap, varLocals, i, node);
         } else {
-          setTextPrompt(node, workflowRequests.get(i), varLocals);
-          node.setNext(Collections.singletonList("waitNode"+i));
-          nodeHashMap.put(workflowRequests.get(i).getNode_name(),node);
-
-          Node node2 = new Node();
-          Canvas canvas2 = new Canvas();
-          xpos = xpos + 500;
-          canvas2.setXPos(xpos);
-          canvas2.setYPos(ypos);
-          node2.setCanvas(canvas2);
-          setWaitEventPrompt(node2, varLocals);
-          node2.setNext(Collections.singletonList("codeNode"+i));
-          nodeHashMap.put("waitNode"+i,node2);
-
-          Node node3 = new Node();
-          Canvas canvas3 = new Canvas();
-          xpos = xpos + 500;
-          canvas3.setXPos(xpos);
-          canvas3.setYPos(ypos);
-          node3.setCanvas(canvas3);
-          setCodeNodePrompt(node3, workflowRequests.get(i), varLocals);
-          node3.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(workflowRequests.get(i).getNext_node()));
-          nodeHashMap.put("codeNode"+i,node3);
+          xpos = processTextPrompt(workflowRequests, nodeHashMap, xpos, ypos, varLocals, i, node);
         }
       }
     }
@@ -219,6 +144,88 @@ public class WorkflowService {
     journeys.add(journey);
     workflowResponse.setJourneys(journeys);
     return workflowResponse;
+  }
+
+  private int processTextPrompt(List<WorkflowRequest> workflowRequests, Map<String, Node> nodeHashMap, int xpos, int ypos, List<VarLocal> varLocals,
+      int i, Node node) {
+    setTextPrompt(node, workflowRequests.get(i), varLocals);
+    node.setNext(Collections.singletonList("waitNode"+ i));
+    nodeHashMap.put(workflowRequests.get(i).getNode_name(), node);
+
+    Node node2 = new Node();
+    Canvas canvas2 = new Canvas();
+    xpos = xpos + 500;
+    canvas2.setXPos(xpos);
+    canvas2.setYPos(ypos);
+    node2.setCanvas(canvas2);
+    setWaitEventPrompt(node2, varLocals);
+    node2.setNext(Collections.singletonList("codeNode"+ i));
+    nodeHashMap.put("waitNode"+ i,node2);
+
+    Node node3 = new Node();
+    Canvas canvas3 = new Canvas();
+    xpos = xpos + 500;
+    canvas3.setXPos(xpos);
+    canvas3.setYPos(ypos);
+    node3.setCanvas(canvas3);
+    setCodeNodePrompt(node3, workflowRequests.get(i), varLocals);
+    node3.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(
+        workflowRequests.get(i).getNext_node()));
+    nodeHashMap.put("codeNode"+ i,node3);
+    return xpos;
+  }
+
+  private void processEmailPrompt(List<WorkflowRequest> workflowRequests, Map<String, Node> nodeHashMap, List<VarLocal> varLocals, int i,
+      Node node) {
+    setEmailPrompt(node, workflowRequests.get(i), varLocals);
+    node.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(
+        workflowRequests.get(i).getNext_node()));
+    nodeHashMap.put(workflowRequests.get(i).getNode_name(), node);
+  }
+
+  private void processPhonePrompt(List<WorkflowRequest> workflowRequests, Map<String, Node> nodeHashMap, List<VarLocal> varLocals, int i,
+      Node node) {
+    setPhonePrompt(node, workflowRequests.get(i), varLocals);
+    node.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(
+        workflowRequests.get(i).getNext_node()));
+    nodeHashMap.put(workflowRequests.get(i).getNode_name(), node);
+  }
+
+  private int processDisplayList(List<WorkflowRequest> workflowRequests, Map<String, Node> nodeHashMap, int xpos, int ypos, List<VarLocal> varLocals,
+      int i, Node node) {
+    setListPrompt(node, workflowRequests.get(i), varLocals);
+    node.setNext(Collections.singletonList("codeNodeList"+ i));
+    nodeHashMap.put(workflowRequests.get(i).getNode_name(), node);
+
+    Node node3 = new Node();
+    Canvas canvas3 = new Canvas();
+    xpos = xpos + 500;
+    canvas3.setXPos(xpos);
+    canvas3.setYPos(ypos);
+    node3.setCanvas(canvas3);
+    setCodeNodePrompt(node3, workflowRequests.get(i), varLocals);
+    node3.setNext("".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) ? new ArrayList<>() : Collections.singletonList(
+        workflowRequests.get(i).getNext_node()));
+    nodeHashMap.put("codeNodeList"+ i,node3);
+    return xpos;
+  }
+
+  private void processPromptOptions(List<WorkflowRequest> workflowRequests, Map<String, Node> nodeHashMap, List<VarLocal> varLocals, int i,
+      Node node) {
+    setPromptOptions(node, workflowRequests.get(i), varLocals);
+    List<String> next = new ArrayList<>();
+    if (!"".equalsIgnoreCase(workflowRequests.get(i).getNext_node())) {
+      next.add(workflowRequests.get(i).getNext_node());
+    }
+    if (!"".equalsIgnoreCase(workflowRequests.get(i).getFalse_node())) {
+      next.add(workflowRequests.get(i).getFalse_node());
+    } else if (!"".equalsIgnoreCase(workflowRequests.get(i).getNext_node()) &&
+        null != workflowRequests.get(i).getOption_2_text() &&
+        !"".equalsIgnoreCase(workflowRequests.get(i).getOption_2_text())) {
+      next.add(workflowRequests.get(i).getNext_node());
+    }
+    node.setNext(next);
+    nodeHashMap.put(workflowRequests.get(i).getNode_name(), node);
   }
 
   private void setCodeNodePrompt(Node node, WorkflowRequest workflowRequest, List<VarLocal> varLocals) {
